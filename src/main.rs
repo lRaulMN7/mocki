@@ -1,7 +1,16 @@
+#![allow(dead_code)]
+
 mod prelude;
-mod routing;
+
+mod domain;
+mod infrastructure;
+
 use crate::prelude::*;
 
+use crate::domain::imposter::Imposter;
+use crate::infrastructure::http::axum_handlers::{
+    create_handler, debug_handler, dynamic_route_handler, root_handler,
+};
 use axum::{
     routing::{get, post},
     Router,
@@ -25,17 +34,15 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let dynamic_routes: Arc<Mutex<HashMap<String, DynamicRoute>>> =
+    let dynamic_routes: Arc<Mutex<HashMap<String, Imposter>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
     let app = Router::new()
-        .route("/", get(routing::root_handler))
-        .route("/debug", get(routing::debug_handler))
-        .route("/create/{name}", post(routing::utils::create_handler))
-        .fallback(routing::utils::dynamic_route_handler)
-        .layer(tower_http::add_extension::AddExtensionLayer::new(
-            dynamic_routes.clone(),
-        ));
+        .route("/", get(root_handler))
+        .route("/debug", get(debug_handler))
+        .route("/create/{name}", post(create_handler))
+        .fallback(dynamic_route_handler)
+        .with_state(dynamic_routes.clone());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     info!("Starting server on http://{}", addr);

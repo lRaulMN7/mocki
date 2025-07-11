@@ -1,1 +1,1 @@
-pub use tracing::{debug, info};
+pub use tracing::info;
