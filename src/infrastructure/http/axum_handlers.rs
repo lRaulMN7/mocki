@@ -1,33 +1,15 @@
-use crate::domain::imposter::Imposter;
+use crate::domain::imposter::{DefaultResponse, Imposter, ImposterPayload};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::http::{StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, info};
 
 pub type SharedRouteMap = Arc<Mutex<HashMap<String, Imposter>>>;
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImposterPayload {
-    pub port: u16,
-    pub protocol: String,
-    pub default_response: Option<DefaultResponse>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DefaultResponse {
-    pub status_code: u16,
-    pub body: String,
-    pub headers: HashMap<String, String>,
-}
-
 pub async fn create_handler(
     Path(name): Path<String>,
     State(routes): State<SharedRouteMap>,
