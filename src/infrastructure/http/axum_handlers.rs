@@ -6,7 +6,8 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tracing::{debug, info};
 
 pub type SharedRouteMap = Arc<Mutex<HashMap<String, Imposter>>>;
@@ -16,15 +17,15 @@ pub type SharedRouteMap = Arc<Mutex<HashMap<String, Imposter>>>;
 pub struct ImposterPayload {
     pub port: u16,
     pub protocol: String,
-    pub default_response: Option<DefaultResponse>
+    pub default_response: Option<DefaultResponse>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct DefaultResponse{
+pub struct DefaultResponse {
     pub status_code: u16,
     pub body: String,
-    pub headers: HashMap<String,String>
+    pub headers: HashMap<String, String>,
 }
 
 pub async fn create_handler(
@@ -32,7 +33,7 @@ pub async fn create_handler(
     State(routes): State<SharedRouteMap>,
     Json(spec): Json<ImposterPayload>,
 ) -> impl IntoResponse {
-    let mut routes = routes.lock().unwrap();
+    let mut routes = routes.lock().await;
 
     if routes.contains_key(&name) {
         return (StatusCode::CONFLICT, "Route already exists");
@@ -50,7 +51,7 @@ pub async fn dynamic_route_handler(
     let path = uri.path();
     let route_name = path.trim_start_matches('/');
 
-    let routes = routes.lock().unwrap();
+    let routes = routes.lock().await;
 
     let Some(route) = routes.get(route_name) else {
         return Response::builder()
@@ -59,19 +60,15 @@ pub async fn dynamic_route_handler(
             .unwrap();
     };
 
-    let response = match &route.default_response {
-        Some(response_body) => response_body,
-        None => {
-            &DefaultResponse{
-                status_code: 200,
-                body: format!("Handling dynamic route: {}", route.path()),
-                headers: Default::default(),
-            }
-        }
+    let fallback = DefaultResponse {
+        status_code: u16::from(StatusCode::OK),
+        body: format!("Handling dynamic route: {}", route.path()),
+        headers: Default::default(),
     };
 
-    let mut response_builder = Response::builder()
-        .status(response.status_code);
+    let response = route.default_response.as_ref().unwrap_or(&fallback);
+
+    let mut response_builder = Response::builder().status(response.status_code);
 
     for (key, value) in &response.headers {
         response_builder = response_builder.header(key, value);

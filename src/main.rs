@@ -16,11 +16,8 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use tokio::sync::Mutex;
 
 #[derive(Clone)]
 struct DynamicRoute {
@@ -47,8 +44,13 @@ async fn main() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     info!("Starting server on http://{}", addr);
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .unwrap_or_else(|_| panic!("Failed to bind TCP listener to address: {addr}"));
+
+    axum::serve(listener, app)
+        .await
+        .expect("Server failed during execution");
 }
 
 #[derive(Deserialize)]
