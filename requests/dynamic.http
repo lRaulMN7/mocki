@@ -1,7 +1,17 @@
 POST http://localhost:3000/create/custom_stub
 Content-Type: application/json
 
-{"port": 4600, "protocol": "http"}
+{
+  "port": 4600,
+  "protocol": "http",
+  "defaultResponse": {
+    "statusCode": 200,
+    "body": "charro",
+    "headers": {
+      "trace-id": "{{$uuid}}"
+    }
+  }
+}
 
 ###
 

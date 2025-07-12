@@ -1,11 +1,14 @@
+use crate::infrastructure::http::axum_handlers::DefaultResponse;
+
 #[derive(Debug, Clone)]
 pub struct Imposter {
     path: String,
+    pub default_response: Option<DefaultResponse>
 }
 
 impl Imposter {
-    pub fn new(path: impl Into<String>) -> Self {
-        Self { path: path.into() }
+    pub fn new(path: impl Into<String>, default_response: Option<DefaultResponse>) -> Self {
+        Self { path: path.into(), default_response}
     }
 
     pub fn path(&self) -> &str {
